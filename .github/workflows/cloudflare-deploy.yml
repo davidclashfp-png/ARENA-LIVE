@@ -2,7 +2,7 @@ name: Deploy Cloudflare Worker
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - 'cloudflare/**'
       - '.github/workflows/cloudflare-deploy.yml'
@@ -14,13 +14,15 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v4
-        with:wranglerVersion: "4"
+        with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: "4"
           workingDirectory: cloudflare
           command: deploy
