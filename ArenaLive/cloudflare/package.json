@@ -1,0 +1,15 @@
+{
+  "name": "arenalive-cloudflare-api",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261120.1",
+    "wrangler": "^4.165.0",
+    "typescript": "^7.0.2"
+  }
+}

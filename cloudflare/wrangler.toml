@@ -1,0 +1,12 @@
+name = "arenalive-api"
+main = "src/index.ts"
+compatibility_date = "2026-11-20"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "arenalive-db"
+database_id = "PREENCHA_COM_O_ID_CRIADO_NO_CLOUDFLARE"
+migrations_dir = "migrations"
+
+[observability]
+enabled = true

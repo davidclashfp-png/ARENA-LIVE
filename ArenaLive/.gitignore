@@ -1,0 +1,11 @@
+.gradle/
+.idea/
+local.properties
+**/build/
+.DS_Store
+Thumbs.db
+node_modules/
+.env
+.env.*
+!.env.example
+cloudflare/.wrangler/
