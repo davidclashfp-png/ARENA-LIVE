@@ -1,0 +1,91 @@
+name: Diagnostico D1
+
+# Teste de diagnostico. Nao altera nenhuma tabela do app.
+# Roda sozinho quando este arquivo e salvo, ou manualmente.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/diagnostico-d1.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    defaults:
+      run:
+        working-directory: cloudflare
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Passo 0 - Secrets existem e estao limpos
+        id: s0
+        continue-on-error: true
+        run: |
+          ok=1
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "TOKEN: VAZIO ou inexistente"; ok=0
+          else
+            echo "TOKEN: presente (${#CLOUDFLARE_API_TOKEN} caracteres)"
+          fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ACCOUNT_ID: VAZIO ou inexistente"; ok=0
+          else
+            echo "ACCOUNT_ID: presente (${#CLOUDFLARE_ACCOUNT_ID} caracteres, o esperado e 32)"
+            [ "${#CLOUDFLARE_ACCOUNT_ID}" = "32" ] || { echo "ACCOUNT_ID com tamanho diferente de 32"; ok=0; }
+          fi
+          case "$CLOUDFLARE_API_TOKEN" in *[[:space:]]*) echo "TOKEN contem espaco ou quebra de linha"; ok=0;; esac
+          case "$CLOUDFLARE_ACCOUNT_ID" in *[[:space:]]*) echo "ACCOUNT_ID contem espaco ou quebra de linha"; ok=0;; esac
+          [ "$ok" = "1" ]
+
+      - name: Passo 1 - Token esta ativo (autenticacao)
+        id: s1
+        continue-on-error: true
+        run: |
+          ok=0
+          for url in "accounts/${CLOUDFLARE_ACCOUNT_ID}/tokens/verify" "user/tokens/verify"; do
+            code=$(curl -sS -o /tmp/v.json -w "%{http_code}" "https://api.cloudflare.com/client/v4/${url}" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
+            echo "== ${url%%/*} -> HTTP ${code}"
+            jq '{success, errors, status: .result.status}' /tmp/v.json || cat /tmp/v.json
+            if [ "$code" = "200" ] && [ "$(jq -r '.result.status' /tmp/v.json)" = "active" ]; then
+              ok=1; break
+            fi
+          done
+          [ "$ok" = "1" ]
+
+      - name: Passo 2 - SELECT 1 remoto (conexao)
+        id: s2
+        continue-on-error: true
+        run: npx --yes wrangler@4 d1 execute arenalive-db --remote --command "SELECT 1 AS ok;"
+
+      - name: Passo 3 - Listar tabelas (leitura)
+        id: s3
+        continue-on-error: true
+        run: npx --yes wrangler@4 d1 execute arenalive-db --remote --command "SELECT name, type FROM sqlite_master WHERE type='table' ORDER BY name;"
+
+      - name: Passo 4 - Criar e apagar tabela de teste (escrita)
+        id: s4
+        continue-on-error: true
+        run: |
+          npx --yes wrangler@4 d1 execute arenalive-db --remote --command "CREATE TABLE IF NOT EXISTS diag_teste_permissao (id INTEGER);"
+          npx --yes wrangler@4 d1 execute arenalive-db --remote --command "DROP TABLE IF EXISTS diag_teste_permissao;"
+
+      - name: Resumo
+        if: always()
+        run: |
+          {
+            echo "### Resultado do diagnostico"
+            echo "- Passo 0 Secrets: ${{ steps.s0.outcome }}"
+            echo "- Passo 1 Token ativo: ${{ steps.s1.outcome }}"
+            echo "- Passo 2 SELECT 1: ${{ steps.s2.outcome }}"
+            echo "- Passo 3 Listar tabelas: ${{ steps.s3.outcome }}"
+            echo "- Passo 4 Escrita: ${{ steps.s4.outcome }}"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.s0.outcome }}${{ steps.s1.outcome }}${{ steps.s2.outcome }}${{ steps.s3.outcome }}${{ steps.s4.outcome }}" != "successsuccesssuccesssuccesssuccess" ]; then
+            exit 1
+          fi
