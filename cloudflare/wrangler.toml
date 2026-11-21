@@ -5,7 +5,7 @@ compatibility_date = "2026-11-20"
 [[d1_databases]]
 binding = "DB"
 database_name = "arenalive-db"
-database_id = "PREENCHA_COM_O_ID_CRIADO_NO_CLOUDFLARE"
+database_id = 6ff39e24-5a77-4d6b-b1b2-4f04373b510d
 migrations_dir = "migrations"
 
 [observability]
