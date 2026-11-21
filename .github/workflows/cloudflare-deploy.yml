@@ -1,3 +1,4 @@
+
 name: Deploy Cloudflare Worker
 
 on:
@@ -18,6 +19,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Apply D1 migrations
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: "4"
+          workingDirectory: cloudflare
+          command: d1 migrations apply arenalive-db --remote
 
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v4
